@@ -242,6 +242,9 @@ function CC.bar:Create(parent, index, width, height)
     mark:SetWidth(MARK_SIZE)
     mark:SetHeight(MARK_SIZE)
     mark:SetPoint("RIGHT", btn, "LEFT", -2, 0)
+    -- IMPORTANT: SetRaidTargetIconTexture only sets the texture *coords*,
+    -- not the file. We must seed the file path here or nothing draws.
+    mark:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
     mark:Hide()
     btn.raidMark = mark
 
