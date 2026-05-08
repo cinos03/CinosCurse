@@ -101,7 +101,20 @@ end
 local function readToken(token)
     if not UnitExists(token) then return end
     if not UnitCanAttack("player", token) then return end
-    if UnitIsDead(token) then return end
+    if UnitIsDead(token) then
+        -- Purge any cached entry for this dead unit so the bar
+        -- disappears immediately even if we missed UNIT_DIED.
+        local guid = UnitGUID(token)
+        local name = UnitName(token)
+        if guid then
+            S.mobs[guid] = nil
+            for k, e in pairs(S.mobs) do
+                if e and e.guid == guid then S.mobs[k] = nil end
+            end
+        end
+        if name then S.mobs["name:" .. name] = nil end
+        return
+    end
     local name = UnitName(token)
     if not name then return end
     local guid = UnitGUID(token)
@@ -413,6 +426,19 @@ CC:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED", function(_, _, subEvent,
         and destGUID then
         S.mobs[destGUID] = nil
         if destName then S.mobs["name:" .. destName] = nil end
+        -- Also purge any per-plate entries that resolved to this GUID.
+        -- (We don't fall back to name-matching because that would wipe
+        -- every same-name plate when one of them dies.) Plates auto-
+        -- hide on death and the plate scanner removes them then.
+        for k, e in pairs(S.mobs) do
+            if e and destGUID and e.guid == destGUID then
+                S.mobs[k] = nil
+            end
+        end
+        if destGUID then S.nameByGuid[destGUID] = nil end
+        if destName and S.guidByName[destName] == destGUID then
+            S.guidByName[destName] = nil
+        end
         return
     end
 
