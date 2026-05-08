@@ -1,0 +1,17 @@
+## Interface: 30300
+## Title: Cinos Curse
+## Notes: Cursive-style curse/DoT target tracker with click-to-target bars (3.3.5a)
+## Author: Cinos
+## Version: 0.0.1
+## SavedVariables: CinosCurseDB
+## SavedVariablesPerCharacter: CinosCurseCharDB
+## DefaultState: enabled
+## X-Category: Combat
+
+Localization.lua
+config.lua
+core.lua
+scanner.lua
+curses.lua
+bar.lua
+ui.lua
