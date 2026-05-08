@@ -392,21 +392,21 @@ CC:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED", function(_, _, subEvent,
         return
     end
 
-    -- Mob discovery: any event whose source or dest is a hostile
-    -- (non-friendly) unit gets upserted by GUID. Free GUID->name map
-    -- without needing a nameplate or unit token.
+    -- Mob discovery: any combat-log event involving a hostile unit
+    -- gets upserted by GUID. We don't filter to "us only" because in
+    -- group play we want to see mobs the rest of the group is on so
+    -- we can curse them too.
     local playerGUID = UnitGUID("player")
     local petGUID    = UnitGUID("pet")
-    local weTouched  = (sourceGUID == playerGUID) or (sourceGUID == petGUID)
-                       or (destGUID == playerGUID) or (destGUID == petGUID)
-    if not weTouched then return end
 
     if destGUID and destName and not isFriendlyFlag(destFlags)
-        and destGUID ~= playerGUID and destGUID ~= petGUID then
+        and destGUID ~= playerGUID and destGUID ~= petGUID
+        and destGUID ~= "" then
         upsert(destGUID, destName)
     end
     if sourceGUID and sourceName and not isFriendlyFlag(sourceFlags)
-        and sourceGUID ~= playerGUID and sourceGUID ~= petGUID then
+        and sourceGUID ~= playerGUID and sourceGUID ~= petGUID
+        and sourceGUID ~= "" then
         upsert(sourceGUID, sourceName)
     end
 end)
