@@ -187,17 +187,33 @@ local function scanWorldFrame()
             local name = nameplateName(plate)
             if name and name ~= "" then
                 activePlates[plate] = name
-                -- Nameplate-only: no GUID. Upsert as name-keyed entry.
-                upsert(nil, name)
-                local e = S.mobs[keyFor(S.guidByName[name], name)]
-                if e then
-                    local pct = nameplateHpPct(plate)
-                    if pct then e.hp = pct end
+                -- Per-plate key: gives same-name mobs distinct entries
+                -- so two plates of "Searing Blade Enforcer" produce
+                -- two bars, not one. GetSorted suppresses one of them
+                -- when a GUID-keyed entry of the same name exists
+                -- (the targeted/cursed copy).
+                local pkey = "plate:" .. tostring(plate)
+                local now = GetTime()
+                local e = S.mobs[pkey]
+                if not e then
+                    e = { name = name, guid = nil, lastSeen = now, plate = plate }
+                    S.mobs[pkey] = e
                 end
+                e.name = name
+                e.lastSeen = now
+                local pct = nameplateHpPct(plate)
+                if pct then e.hp = pct end
             end
         else
+            -- Plate hidden: drop its entry immediately.
+            local name = activePlates[plate]
             activePlates[plate] = nil
+            local pkey = "plate:" .. tostring(plate)
+            S.mobs[pkey] = nil
+            -- name var unused but kept for future targeting hooks.
+            local _ = name
         end
+    end
     end
 end
 
@@ -309,9 +325,27 @@ function S:GetSorted(limit)
     local list = {}
     local targetGuid = UnitGUID("target")
     local moGuid     = UnitGUID("mouseover")
+    -- Count GUID-keyed entries per name so we know how many plate-only
+    -- entries of each name to suppress (one per GUID-keyed entry, to
+    -- avoid showing the targeted/cursed copy as both a guid bar AND a
+    -- plate-only bar).
+    local guidCountByName = {}
+    for _, e in pairs(self.mobs) do
+        if e.name and e.guid then
+            guidCountByName[e.name] = (guidCountByName[e.name] or 0) + 1
+        end
+    end
+    local plateSuppress = {}
+    for k, v in pairs(guidCountByName) do plateSuppress[k] = v end
     for _, e in pairs(self.mobs) do
         if e.name and not ignored(e.name) then
-            table.insert(list, e)
+            if not e.guid and e.plate and (plateSuppress[e.name] or 0) > 0 then
+                -- Skip: this plate-only entry is the same mob as one
+                -- of the GUID-keyed entries.
+                plateSuppress[e.name] = plateSuppress[e.name] - 1
+            else
+                table.insert(list, e)
+            end
         end
     end
     table.sort(list, function(a, b)

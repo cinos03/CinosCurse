@@ -202,14 +202,18 @@ function CC.ui:Refresh()
                 -- Mob gone.
                 if locked then
                     -- In combat we can't mutate secure attributes or
-                    -- toggle visibility on a protected frame. Leave
-                    -- the bar visible with its existing macrotext
-                    -- (so what the user clicks matches what they
-                    -- see) but grey it out to flag staleness. The
-                    -- slot binding stays so PLAYER_REGEN_ENABLED can
-                    -- clean up properly after combat.
+                    -- toggle visibility on a protected frame. Hide
+                    -- via SetAlpha and FREE the slot so a new mob can
+                    -- claim this bar in Phase 2. The bar's appliedName
+                    -- is preserved, so a new mob of the same name can
+                    -- safely reuse this bar's existing macrotext (and
+                    -- become fully clickable). A new mob of a
+                    -- different name will only fill a pristine bar
+                    -- (one whose appliedName is nil) to avoid sending
+                    -- a stale /targetexact on click.
                     if b.SetStale then b:SetStale(true) end
                     b:SetDebuffs(nil)
+                    slotAssign[i] = nil
                 else
                     slotAssign[i] = nil
                     b:ClearUnit()
