@@ -47,8 +47,31 @@ local function keyFor(guid, name)
     return nil
 end
 
+-- Hard-coded blacklist of non-targetable / utility units. Matched as
+-- case-insensitive substrings against the mob name. Keeping this near
+-- the top of the file so `upsert` can reject these before they ever
+-- enter S.mobs.
+local HARD_IGNORED = {
+    "world invisible trigger",
+    "invisible stalker",
+    "generic trigger",
+    "spell trigger",
+    "quest credit",
+    "generic bunny",
+}
+
+local function nameBlacklisted(name)
+    if not name then return true end
+    local lower = name:lower()
+    for _, sub in ipairs(HARD_IGNORED) do
+        if lower:find(sub, 1, true) then return true end
+    end
+    return false
+end
+
 local function upsert(guid, name, token)
     if not name then return end
+    if nameBlacklisted(name) then return end
     local now = GetTime()
     local k = keyFor(guid, name)
     local e = S.mobs[k]
@@ -185,7 +208,7 @@ local function scanWorldFrame()
     for plate, _ in pairs(activePlates) do
         if plate:IsShown() then
             local name = nameplateName(plate)
-            if name and name ~= "" then
+            if name and name ~= "" and not nameBlacklisted(name) then
                 activePlates[plate] = name
                 -- Per-plate key: gives same-name mobs distinct entries
                 -- so two plates of "Searing Blade Enforcer" produce
@@ -309,6 +332,7 @@ end)
 local MARK_PRIORITY = { [8]=8, [7]=7, [6]=6, [5]=5, [4]=4, [3]=3, [2]=2, [1]=1 }
 
 local function ignored(name)
+    if nameBlacklisted(name) then return true end
     local cfg = CC.config and CC.config.db
     if not (cfg and cfg.ignoredNames) then return false end
     local lower = name:lower()
