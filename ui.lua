@@ -196,19 +196,22 @@ function CC.ui:Refresh()
                 b:SetHealth(e.hp or 0)
                 b:SetRaidMark(e.mark or 0)
                 b:SetDebuffs(e.guid and CC.curses:GetActive(e.guid) or nil)
+                if b.SetStale then b:SetStale(false) end
                 if not locked then b:SetUnit(tokenForGuid(e.guid)) end
             else
-                -- Mob gone. Clear visuals; keep secure macrotext if
-                -- locked down (it'll be rewritten on next out-of-combat
-                -- refresh).
-                slotAssign[i] = nil
+                -- Mob gone.
                 if locked then
-                    b.nameText:SetText("")
-                    b:SetHealth(0)
-                    b:SetRaidMark(0)
+                    -- In combat we can't mutate secure attributes or
+                    -- toggle visibility on a protected frame. Leave
+                    -- the bar visible with its existing macrotext
+                    -- (so what the user clicks matches what they
+                    -- see) but grey it out to flag staleness. The
+                    -- slot binding stays so PLAYER_REGEN_ENABLED can
+                    -- clean up properly after combat.
+                    if b.SetStale then b:SetStale(true) end
                     b:SetDebuffs(nil)
-                    b:Hide()
                 else
+                    slotAssign[i] = nil
                     b:ClearUnit()
                     b:Clear()
                 end
@@ -303,6 +306,8 @@ function CC.ui:StartUpdater()
             local cfg = CC.config and CC.config.db
             local maxBars = (cfg and cfg.maxBars) or 10
             local mobs = CC.scanner.mobs
+            local tGuid = UnitGUID("target")
+            local tName = (not tGuid) and UnitName("target") or nil
             for i = 1, maxBars do
                 local b = bars[i]
                 local slot = slotAssign[i]
@@ -315,6 +320,16 @@ function CC.ui:StartUpdater()
                     if slot.guid then
                         b:SetDebuffs(CC.curses:GetActive(slot.guid, nil, debuffBuf))
                     end
+                    -- Target indicator: show when this bar's mob is
+                    -- the player's current target. Match by GUID when
+                    -- available (most reliable), otherwise by name.
+                    local targeted = false
+                    if slot.guid and tGuid and slot.guid == tGuid then
+                        targeted = true
+                    elseif tName and slot.name == tName and not slot.guid then
+                        targeted = true
+                    end
+                    if b.SetTargeted then b:SetTargeted(targeted) end
                 end
             end
         end

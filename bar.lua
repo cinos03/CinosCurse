@@ -24,6 +24,7 @@ function BarProto:SetMob(name, guid)
     self.mobGuid = guid
     if name then
         self.nameText:SetText(name)
+        if self.SetStale then self:SetStale(false) end
         self:ApplySecure()
         self:Show()
     else
@@ -35,12 +36,48 @@ function BarProto:Clear()
     self.mobName = nil
     self.mobGuid = nil
     self.nameText:SetText("")
+    self.nameText:SetTextColor(1, 1, 1, 1)
     self.hpBar:SetValue(0)
     if self.raidMark then self.raidMark:Hide() end
+    if self.targetIndicator then self.targetIndicator:Hide() end
     if self.debuffIcons then
         for _, ic in ipairs(self.debuffIcons) do ic:Hide() end
     end
+    -- Wipe secure attributes so a blank bar can't fire a stale
+    -- /targetexact at the previous occupant. Combat-safe: caller must
+    -- only invoke Clear() out of combat (ui.lua handles the in-combat
+    -- case by leaving the bar populated-but-stale).
+    if not InCombatLockdown() then
+        self.appliedName = nil
+        self.appliedUnit = nil
+        self.pendingName = nil
+        self:SetAttribute("type1",      nil)
+        self:SetAttribute("macrotext1", nil)
+        self:SetAttribute("type2",      nil)
+        self:SetAttribute("macrotext2", nil)
+        self:SetAttribute("unit",       nil)
+    end
+    self:SetAlpha(1)
     self:Hide()
+end
+
+-- Mark this bar as showing a mob we've lost track of (combat-only
+-- fallback). We can't Hide() a protected frame in combat, but SetAlpha
+-- is allowed, so we make it invisible. Mouse hits still register but
+-- the user has nothing visible to click on.
+function BarProto:SetStale(stale)
+    if stale then
+        self:SetAlpha(0)
+        if self.targetIndicator then self.targetIndicator:Hide() end
+    else
+        self:SetAlpha(1)
+    end
+end
+
+-- Show / hide the "this is your current target" arrow. Combat-safe.
+function BarProto:SetTargeted(on)
+    if not self.targetIndicator then return end
+    if on then self.targetIndicator:Show() else self.targetIndicator:Hide() end
 end
 
 -- ApplySecure: rewrite the secure macrotext attributes for this bar.
@@ -204,6 +241,25 @@ function CC.bar:Create(parent, index, width, height)
     mark:SetPoint("LEFT", btn, "LEFT", 4, 0)
     mark:Hide()
     btn.raidMark = mark
+
+    -- Target indicator: a yellow ">" just outside the left edge of the
+    -- bar, shown when this bar's mob is the player's current target.
+    -- Cursive-style. Cheap FontString — no extra texture asset needed.
+    local tih = CreateFrame("Frame", nil, btn)
+    tih:SetPoint("RIGHT", btn, "LEFT", -1, 0)
+    tih:SetWidth(10)
+    tih:SetHeight(height)
+    tih:SetFrameLevel(btn:GetFrameLevel() + 6)
+    local ti = tih:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    do
+        local f, s = ti:GetFont()
+        if f then ti:SetFont(f, (s or 14) + 2, "OUTLINE") end
+    end
+    ti:SetPoint("CENTER", tih, "CENTER", 0, 0)
+    ti:SetText(">")
+    ti:SetTextColor(1, 0.85, 0.1, 1)
+    ti:Hide()
+    btn.targetIndicator = ti
 
     -- Debuff icon row, anchored OUTSIDE the bar to its right edge,
     -- growing further right as more icons appear. Icons are parented to
