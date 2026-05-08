@@ -27,6 +27,11 @@ S.nameByGuid  = {}     -- guid -> name
 
 -- How long since lastSeen before we drop the entry.
 local STALE_SECONDS = 6
+-- Hard ceiling: even mobs we're "keeping alive" (raid-marked or
+-- still-cursed) get dropped after this long without a sighting. Stops
+-- bars from sticking around when you hearth out, change continents,
+-- die and release, etc.
+local HARD_STALE_SECONDS = 30
 
 -- Throttle settings.
 local POLL_INTERVAL  = 0.25  -- unit-token + nameplate sweep
@@ -219,7 +224,12 @@ local function prune()
     local now = GetTime()
     local curseState = CC.curses and CC.curses.state
     for k, e in pairs(S.mobs) do
-        if (now - (e.lastSeen or 0)) > STALE_SECONDS then
+        local age = now - (e.lastSeen or 0)
+        if age > HARD_STALE_SECONDS then
+            -- Hard ceiling: drop unconditionally so changing zones /
+            -- hearthing out can't leave ghost bars around.
+            S.mobs[k] = nil
+        elseif age > STALE_SECONDS then
             -- Keep alive if:
             --   1. We still have an active curse on this guid, OR
             --   2. The mob has a raid marker (so pre-marked pulls stay
@@ -342,3 +352,15 @@ CC:RegisterEvent("UPDATE_MOUSEOVER_UNIT",    function() readToken("mouseover") e
 CC:RegisterEvent("PLAYER_FOCUS_CHANGED",     function() readToken("focus") end)
 CC:RegisterEvent("RAID_TARGET_UPDATE",       function() pollTokens() end)
 CC:RegisterEvent("UNIT_HEALTH",              function(_, unit) if unit then readToken(unit) end end)
+
+-- Zone changes: wipe everything. Anything we were tracking is by
+-- definition no longer nearby (and any GUIDs we cached are gone from
+-- the world). Prevents ghost bars after hearth / portal / death.
+local function wipeAll()
+    for k in pairs(S.mobs)       do S.mobs[k]       = nil end
+    for k in pairs(S.guidByName) do S.guidByName[k] = nil end
+    for k in pairs(S.nameByGuid) do S.nameByGuid[k] = nil end
+    for k in pairs(activePlates) do activePlates[k] = nil end
+end
+CC:RegisterEvent("PLAYER_ENTERING_WORLD", wipeAll)
+CC:RegisterEvent("ZONE_CHANGED_NEW_AREA", wipeAll)
