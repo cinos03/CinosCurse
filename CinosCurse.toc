@@ -2,7 +2,7 @@
 ## Title: Cinos Curse
 ## Notes: Cursive-style curse/DoT target tracker with click-to-target bars (3.3.5a)
 ## Author: Cinos
-## Version: 0.0.1
+## Version: 0.1.0
 ## SavedVariables: CinosCurseDB
 ## SavedVariablesPerCharacter: CinosCurseCharDB
 ## DefaultState: enabled
