@@ -77,20 +77,6 @@ multiple targets without retargeting.
 - No Nampower / SuperWoW dependency.
 - Works on retail-style WotLK private servers.
 
-## Architecture
-
-See [PLAN.md](PLAN.md) for the full design doc and milestone notes.
-
-```
-core.lua          event dispatch + slash router
-config.lua        SavedVariables defaults + accessors
-Localization.lua  string table
-scanner.lua      WorldFrame nameplate walker + unit-token poller
-curses.lua       per-GUID debuff state + combat-log reconciliation
-bar.lua          single-bar widget (SecureActionButton + UnitButton)
-ui.lua           anchor frame, bar pool, refresh + updater loops
-```
-
 ## License
 
 MIT.
