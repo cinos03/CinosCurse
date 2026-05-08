@@ -360,17 +360,6 @@ function S:GetSorted(limit)
         local ah = a.hp or 0
         local bh = b.hp or 0
         if ah ~= bh then return ah > bh end
-CC:RegisterEvent("UNIT_HEALTH_FREQUENT",     function(_, unit) if unit then readToken(unit) end end)
-
--- Drop mobs the instant they die so their bar disappears immediately.
-CC:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED", function(_, _, subEvent,
-        _, _, _, destGUID, destName)
-    if (subEvent == "UNIT_DIED" or subEvent == "UNIT_DESTROYED" or subEvent == "PARTY_KILL")
-        and destGUID then
-        S.mobs[destGUID] = nil
-        if destName then S.mobs["name:" .. destName] = nil end
-    end
-end)
         return (a.name or "") < (b.name or "")
     end)
     if limit and #list > limit then
@@ -385,6 +374,42 @@ CC:RegisterEvent("UPDATE_MOUSEOVER_UNIT",    function() readToken("mouseover") e
 CC:RegisterEvent("PLAYER_FOCUS_CHANGED",     function() readToken("focus") end)
 CC:RegisterEvent("RAID_TARGET_UPDATE",       function() pollTokens() end)
 CC:RegisterEvent("UNIT_HEALTH",              function(_, unit) if unit then readToken(unit) end end)
+CC:RegisterEvent("UNIT_HEALTH_FREQUENT",     function(_, unit) if unit then readToken(unit) end end)
+
+-- Combat log: discover mobs from any spell/swing involving the player
+-- or pet, even when they have no nameplate. Also drop dead mobs.
+local function isFriendlyFlag(flags)
+    -- COMBATLOG_OBJECT_REACTION_FRIENDLY = 0x10
+    return flags and bit and bit.band and bit.band(flags, 0x10) ~= 0
+end
+CC:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED", function(_, _, subEvent,
+        sourceGUID, sourceName, sourceFlags,
+        destGUID,   destName,   destFlags)
+    if (subEvent == "UNIT_DIED" or subEvent == "UNIT_DESTROYED" or subEvent == "PARTY_KILL")
+        and destGUID then
+        S.mobs[destGUID] = nil
+        if destName then S.mobs["name:" .. destName] = nil end
+        return
+    end
+
+    -- Mob discovery: any event whose source or dest is a hostile
+    -- (non-friendly) unit gets upserted by GUID. Free GUID->name map
+    -- without needing a nameplate or unit token.
+    local playerGUID = UnitGUID("player")
+    local petGUID    = UnitGUID("pet")
+    local weTouched  = (sourceGUID == playerGUID) or (sourceGUID == petGUID)
+                       or (destGUID == playerGUID) or (destGUID == petGUID)
+    if not weTouched then return end
+
+    if destGUID and destName and not isFriendlyFlag(destFlags)
+        and destGUID ~= playerGUID and destGUID ~= petGUID then
+        upsert(destGUID, destName)
+    end
+    if sourceGUID and sourceName and not isFriendlyFlag(sourceFlags)
+        and sourceGUID ~= playerGUID and sourceGUID ~= petGUID then
+        upsert(sourceGUID, sourceName)
+    end
+end)
 
 -- Zone changes: wipe everything. Anything we were tracking is by
 -- definition no longer nearby (and any GUIDs we cached are gone from
