@@ -229,24 +229,26 @@ function CC.bar:Create(parent, index, width, height)
     if font then
         nameText:SetFont(font, size or 11, "OUTLINE")
     end
-    nameText:SetPoint("LEFT", textHost, "LEFT", 19, 0)
+    nameText:SetPoint("LEFT", textHost, "LEFT", 6, 0)
     nameText:SetPoint("RIGHT", textHost, "RIGHT", -4, 0)
     nameText:SetJustifyH("LEFT")
     nameText:SetTextColor(1, 1, 1, 1)
     btn.nameText = nameText
 
+    -- Raid target marker, anchored OUTSIDE the left edge of the bar so
+    -- pre-marked pulls are easy to spot at a glance.
     local mark = btn:CreateTexture(nil, "OVERLAY")
-    mark:SetWidth(16)
-    mark:SetHeight(16)
-    mark:SetPoint("LEFT", btn, "LEFT", 4, 0)
+    local MARK_SIZE = height
+    mark:SetWidth(MARK_SIZE)
+    mark:SetHeight(MARK_SIZE)
+    mark:SetPoint("RIGHT", btn, "LEFT", -2, 0)
     mark:Hide()
     btn.raidMark = mark
 
-    -- Target indicator: a yellow ">" just outside the left edge of the
-    -- bar, shown when this bar's mob is the player's current target.
-    -- Cursive-style. Cheap FontString — no extra texture asset needed.
+    -- Target indicator: a yellow ">" just outside the left edge,
+    -- positioned further left so it doesn't overlap the raid mark.
     local tih = CreateFrame("Frame", nil, btn)
-    tih:SetPoint("RIGHT", btn, "LEFT", -1, 0)
+    tih:SetPoint("RIGHT", mark, "LEFT", -1, 0)
     tih:SetWidth(10)
     tih:SetHeight(height)
     tih:SetFrameLevel(btn:GetFrameLevel() + 6)
@@ -294,10 +296,9 @@ function CC.bar:Create(parent, index, width, height)
         btn.debuffIcons[i] = ic
     end
 
-    -- Now that icons are external, name text can use the full bar width
-    -- (minus the raid-mark slot on the left).
+    -- Now that icons are external, name text can use the full bar width.
     nameText:ClearAllPoints()
-    nameText:SetPoint("LEFT", textHost, "LEFT", 19, 0)
+    nameText:SetPoint("LEFT", textHost, "LEFT", 6, 0)
     nameText:SetPoint("RIGHT", textHost, "RIGHT", -4, 0)
     nameText:SetJustifyH("LEFT")
 
