@@ -227,13 +227,39 @@ function CC.ui:Refresh()
                 local b = bars[i]
                 if b and not slotAssign[i] then
                     if locked then
+                        -- In combat we can't mutate secure attributes,
+                        -- so we can only safely (re-)use a bar whose
+                        -- existing applied name matches OR a bar that
+                        -- has never been bound (no stale macrotext to
+                        -- worry about). Either way, defer ApplySecure
+                        -- to PLAYER_REGEN_ENABLED.
                         if e.name == b.appliedName then
                             slotAssign[i] = { name = e.name, guid = e.guid }
                             taken[k] = true
+                            b.mobName = e.name
+                            b.mobGuid = e.guid
                             b:SetHealth(e.hp or 0)
                             b:SetRaidMark(e.mark or 0)
                             b:SetDebuffs(e.guid and CC.curses:GetActive(e.guid) or nil)
                             b.nameText:SetText(e.name)
+                            b:SetAlpha(1)
+                            b:Show()
+                            break
+                        elseif b.appliedName == nil then
+                            -- Pristine bar: safe to populate visuals.
+                            -- Secure attrs are nil so clicks won't fire
+                            -- a stale target. ApplySecure deferred via
+                            -- pendingName -> PLAYER_REGEN_ENABLED.
+                            slotAssign[i] = { name = e.name, guid = e.guid }
+                            taken[k] = true
+                            b.mobName = e.name
+                            b.mobGuid = e.guid
+                            b.pendingName = e.name
+                            b:SetHealth(e.hp or 0)
+                            b:SetRaidMark(e.mark or 0)
+                            b:SetDebuffs(e.guid and CC.curses:GetActive(e.guid) or nil)
+                            b.nameText:SetText(e.name)
+                            b:SetAlpha(1)
                             b:Show()
                             break
                         end
