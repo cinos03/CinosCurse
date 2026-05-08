@@ -220,9 +220,14 @@ local function prune()
     local curseState = CC.curses and CC.curses.state
     for k, e in pairs(S.mobs) do
         if (now - (e.lastSeen or 0)) > STALE_SECONDS then
-            -- Keep alive if we still have an active curse on this guid.
+            -- Keep alive if:
+            --   1. We still have an active curse on this guid, OR
+            --   2. The mob has a raid marker (so pre-marked pulls stay
+            --      visible until the marker is removed or the mob dies).
             local keep = false
-            if e.guid and curseState and curseState[e.guid] then
+            if e.mark and e.mark > 0 then
+                keep = true
+            elseif e.guid and curseState and curseState[e.guid] then
                 for _, ce in pairs(curseState[e.guid]) do
                     if (ce.expiration or 0) > now then
                         keep = true
