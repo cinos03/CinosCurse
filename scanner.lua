@@ -214,7 +214,6 @@ local function scanWorldFrame()
             local _ = name
         end
     end
-    end
 end
 
 -- ---------------------------------------------------------------------------
