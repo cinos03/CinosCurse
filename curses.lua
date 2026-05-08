@@ -26,9 +26,11 @@ local C = CC.curses
 
 C.state = {}  -- guid -> { lowerName -> entry }
 
--- Default base durations for common warlock/affliction-style spells.
--- Used as a fallback only; UnitDebuff overrides whenever available.
+-- Default base durations for trackable debuffs/DoTs/bleeds across all
+-- classes. Used as a fallback only; UnitDebuff overrides whenever
+-- available. Durations are at max-rank Wrath 3.3.5a values.
 local DEFAULT_DURATIONS = {
+    -- Warlock --------------------------------------------------------
     ["curse of agony"]          = 24,
     ["curse of doom"]           = 60,
     ["curse of the elements"]   = 300,
@@ -43,12 +45,128 @@ local DEFAULT_DURATIONS = {
     ["haunt"]                   = 12,
     ["immolate"]                = 15,
     ["shadowflame"]             = 8,
-    -- Shadow priest-ish, balance druid-ish, useful even pre-config.
+    ["seed of corruption"]      = 18,
+    ["banish"]                  = 30,
+    ["fear"]                    = 10,
+    ["howl of terror"]          = 8,
+
+    -- Priest ---------------------------------------------------------
     ["shadow word: pain"]       = 18,
     ["vampiric touch"]          = 15,
     ["devouring plague"]        = 24,
+    ["holy fire"]               = 7,
+    ["mind flay"]               = 3,
+    ["shackle undead"]          = 50,
+    ["psychic scream"]          = 8,
+    ["psychic horror"]          = 3,
+
+    -- Druid ----------------------------------------------------------
     ["moonfire"]                = 12,
     ["insect swarm"]            = 12,
+    ["faerie fire"]             = 300,
+    ["faerie fire (feral)"]     = 300,
+    ["rake"]                    = 9,
+    ["rip"]                     = 16,        -- base; +2s per CP server-side
+    ["lacerate"]                = 15,
+    ["pounce bleed"]            = 18,
+    ["thorns"]                  = 600,
+    ["hibernate"]               = 30,
+    ["entangling roots"]        = 27,
+    ["cyclone"]                 = 6,
+
+    -- Rogue ----------------------------------------------------------
+    ["rupture"]                 = 16,        -- base; +2s per CP
+    ["garrote"]                 = 18,
+    ["deadly poison"]           = 12,
+    ["wound poison"]            = 15,
+    ["crippling poison"]        = 12,
+    ["mind-numbing poison"]     = 14,
+    ["expose armor"]            = 30,
+    ["blind"]                   = 10,
+    ["sap"]                     = 60,
+    ["gouge"]                   = 4,
+    ["kidney shot"]             = 6,
+
+    -- Hunter ---------------------------------------------------------
+    ["serpent sting"]           = 15,
+    ["viper sting"]             = 8,
+    ["wyvern sting"]            = 30,
+    ["hunter's mark"]           = 300,
+    ["scorpid sting"]           = 20,
+    ["concussive shot"]         = 6,
+    ["explosive trap"]          = 20,
+    ["immolation trap"]         = 15,
+    ["black arrow"]             = 15,
+    ["freezing trap"]           = 30,
+    ["frost trap"]              = 30,
+    ["piercing shots"]          = 8,
+    ["chimera shot - serpent"]  = 15,
+    ["mongoose bite"]           = 5,
+
+    -- Mage -----------------------------------------------------------
+    ["frostbolt"]               = 9,         -- slow component
+    ["frost nova"]              = 8,
+    ["polymorph"]               = 50,
+    ["polymorph: pig"]          = 50,
+    ["polymorph: turtle"]       = 50,
+    ["slow"]                    = 15,
+    ["pyroblast"]               = 12,
+    ["living bomb"]             = 12,
+    ["ignite"]                  = 4,
+    ["chilled"]                 = 8,
+    ["fireball"]                = 8,         -- DoT component
+    ["scorch"]                  = 30,        -- improved scorch debuff
+    ["winter's chill"]          = 15,
+    ["dragon's breath"]         = 5,
+
+    -- Shaman ---------------------------------------------------------
+    ["flame shock"]             = 18,
+    ["frost shock"]             = 8,
+    ["earth shock"]             = 2,
+    ["hex"]                     = 30,
+    ["bind elemental"]          = 50,
+
+    -- Paladin --------------------------------------------------------
+    ["judgement of light"]      = 20,
+    ["judgement of wisdom"]     = 20,
+    ["judgement of justice"]    = 20,
+    ["consecration"]            = 8,
+    ["holy shield"]             = 10,
+    ["repentance"]              = 60,
+    ["hammer of justice"]       = 6,
+    ["seal of vengeance"]       = 15,
+    ["seal of corruption"]      = 15,
+    ["holy vengeance"]          = 15,        -- SoV stack debuff
+    ["blood corruption"]        = 15,        -- SoC stack debuff
+    ["turn evil"]               = 10,
+
+    -- Warrior --------------------------------------------------------
+    ["rend"]                    = 15,
+    ["deep wounds"]             = 6,
+    ["sunder armor"]            = 30,
+    ["thunder clap"]            = 30,
+    ["demoralizing shout"]      = 30,
+    ["hamstring"]               = 15,
+    ["mocking blow"]            = 6,
+    ["intimidating shout"]      = 8,
+    ["mortal strike"]           = 10,        -- mortal wounds healing-debuff
+    ["shield slam"]             = 6,         -- dispel-magic component varies
+    ["concussion blow"]         = 5,
+
+    -- Death Knight ---------------------------------------------------
+    ["frost fever"]              = 15,
+    ["blood plague"]             = 15,
+    ["chains of ice"]            = 8,
+    ["icy touch"]                = 15,
+    ["plague strike"]            = 15,
+    ["strangulate"]              = 5,
+    ["death grip"]               = 3,
+    ["hungering cold"]           = 10,
+    ["unholy blight"]            = 10,
+    ["necrotic strike"]          = 10,
+    ["scarlet fever"]            = 21,
+    ["ebon plague"]              = 21,
+    ["crypt fever"]              = 21,
 }
 
 local function lower(s) return s and s:lower() or nil end
