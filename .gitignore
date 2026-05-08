@@ -1,6 +1,6 @@
 *.bak
 *.swp
 *.tmp
-*.md
+PLAN.md
 .DS_Store
 Thumbs.db
