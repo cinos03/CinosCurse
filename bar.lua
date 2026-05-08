@@ -80,9 +80,18 @@ function BarProto:SetTargeted(on)
     if on then self.targetIndicator:Show() else self.targetIndicator:Hide() end
 end
 
--- ApplySecure: rewrite the secure macrotext attributes for this bar.
+-- ApplySecure: rewrite the secure click attributes for this bar.
 -- 3.3.5a forbids mutating secure attributes during combat, so if we're
 -- locked down we stash the desired name and re-apply on PLAYER_REGEN_ENABLED.
+--
+-- Targeting strategy:
+--   * If we have a unit token for this specific GUID (target/focus/
+--     mouseover/raidNtarget/partyNtarget), use SecureUnitButton's
+--     built-in target action: type1="target" + unit=<token>. This
+--     targets the EXACT unit by GUID, not by name — critical when
+--     multiple mobs share a name (e.g. training dummies).
+--   * Otherwise fall back to /targetexact <name> macro. Less precise
+--     for duplicate-name mobs but always works.
 function BarProto:ApplySecure()
     local name = self.mobName
     if not name then return end
@@ -92,8 +101,15 @@ function BarProto:ApplySecure()
     end
     self.pendingName = nil
     self.appliedName = name
-    self:SetAttribute("type1",      "macro")
-    self:SetAttribute("macrotext1", "/targetexact " .. name)
+    if self.appliedUnit then
+        -- Token-based targeting: SecureUnitButton handles left-click.
+        self:SetAttribute("type1",      "target")
+        self:SetAttribute("macrotext1", nil)
+    else
+        -- Name-based fallback.
+        self:SetAttribute("type1",      "macro")
+        self:SetAttribute("macrotext1", "/targetexact " .. name)
+    end
 
     -- type2 (right-click cast) is wired in M5. Keep slot reserved.
     local quick = CinosCurse.config and CinosCurse.config.db and CinosCurse.config.db.quickCurse
@@ -110,11 +126,16 @@ end
 -- over it. Token must be a real, currently-resolving unit token
 -- (target / focus / raidNtarget / partyNtarget / mouseover). No-op in
 -- combat (the attribute will be refreshed on next out-of-combat tick).
+--
+-- Also re-applies the click attributes so that whenever a token
+-- becomes available the bar switches from name-based to GUID-based
+-- targeting (and vice versa when the token disappears).
 function BarProto:SetUnit(token)
     if InCombatLockdown() then return end
     if self.appliedUnit == token then return end
     self.appliedUnit = token
     self:SetAttribute("unit", token)
+    if self.mobName then self:ApplySecure() end
 end
 
 function BarProto:ClearUnit()
@@ -122,6 +143,7 @@ function BarProto:ClearUnit()
     if self.appliedUnit == nil then return end
     self.appliedUnit = nil
     self:SetAttribute("unit", nil)
+    if self.mobName then self:ApplySecure() end
 end
 
 -- Called by ui.lua on PLAYER_REGEN_ENABLED to flush deferred rewrites.
