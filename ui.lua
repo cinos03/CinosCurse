@@ -412,6 +412,14 @@ function CC.ui:HandleSlash(msg)
         end
     elseif cmd == "hide" then
         for _, b in ipairs(bars) do b:Clear() end
+    elseif cmd == "clear" then
+        if CC.scanner and CC.scanner.WipeAll then
+            CC.scanner:WipeAll()
+        else
+            for k in pairs(CC.scanner.mobs) do CC.scanner.mobs[k] = nil end
+        end
+        for _, b in ipairs(bars) do b:Clear() end
+        DEFAULT_CHAT_FRAME:AddMessage("|cff66ccffCinosCurse|r mob list cleared")
     elseif cmd == "dump" then
         local n = 0
         for _, e in pairs(CC.scanner.mobs) do

@@ -195,6 +195,30 @@ local function nameplateHpPct(frame)
     if mx and mx > mn then return (v - mn) / (mx - mn) end
 end
 
+-- Returns true only when the nameplate's HP bar color indicates a
+-- hostile or neutral unit (red / yellow). Friendly plates (green)
+-- are filtered out so party/raid members never get tracked.
+local function nameplateIsHostile(frame)
+    local hp = frame.__ccHpBar
+    if not hp then
+        local children = { frame:GetChildren() }
+        for _, c in ipairs(children) do
+            if c.GetObjectType and c:GetObjectType() == "StatusBar" then
+                hp = c
+                break
+            end
+        end
+        if not hp then return false end
+        frame.__ccHpBar = hp
+    end
+    local r, g, b = hp:GetStatusBarColor()
+    if not r then return false end
+    -- Hostile red ≈ (1, 0, 0); neutral yellow ≈ (1, 1, 0);
+    -- friendly green ≈ (0, 1, 0); player-faction blue ≈ (0, 0, 1).
+    -- Accept high-red, low-blue (red & yellow); reject everything else.
+    return r > 0.5 and b < 0.5
+end
+
 local function hookPlate(frame)
     if hookedPlates[frame] then return end
     hookedPlates[frame] = true
@@ -221,7 +245,8 @@ local function scanWorldFrame()
     for plate, _ in pairs(activePlates) do
         if plate:IsShown() then
             local name = nameplateName(plate)
-            if name and name ~= "" and not nameBlacklisted(name) then
+            if name and name ~= "" and not nameBlacklisted(name)
+                and nameplateIsHostile(plate) then
                 activePlates[plate] = name
                 -- Per-plate key: gives same-name mobs distinct entries
                 -- so two plates of "Searing Blade Enforcer" produce
@@ -274,7 +299,22 @@ end
 local function prune()
     local now = GetTime()
     local curseState = CC.curses and CC.curses.state
+    -- Build a set of friendly GUIDs (party/raid + their pets) so we
+    -- can scrub any leftovers if a former enemy joined our group.
+    local friendlyGuids = {}
+    local function addFriendly(token)
+        if UnitExists(token) then
+            local g = UnitGUID(token)
+            if g then friendlyGuids[g] = true end
+        end
+    end
+    addFriendly("player"); addFriendly("pet")
+    for i = 1, 4 do addFriendly("party"..i); addFriendly("party"..i.."pet") end
+    for i = 1, 40 do addFriendly("raid"..i); addFriendly("raid"..i.."pet") end
     for k, e in pairs(S.mobs) do
+        if e.guid and friendlyGuids[e.guid] then
+            S.mobs[k] = nil
+        else
         local age = now - (e.lastSeen or 0)
         if age > HARD_STALE_SECONDS then
             -- Hard ceiling: drop unconditionally so changing zones /
@@ -300,6 +340,7 @@ local function prune()
                 S.mobs[k] = nil
             end
         end
+        end -- friendly-guid else
     end
 end
 
